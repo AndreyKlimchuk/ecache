@@ -7,8 +7,32 @@
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
+-export([start_ttl_reaper/3, update_ttl_reaper/2, kill_ttl_reaper/1, kill_ttl_reapers/1]).
+
 -record(reaper, {name, size}).
 -define(TIMEOUT, 4000).
+
+%% TTL Reapers
+
+start_ttl_reaper(Name, Key, TTL) ->
+    spawn(fun() ->
+            link(ets:info(Name, owner)),
+            reap_after(Name, Key, TTL)
+          end).
+
+reap_after(Name, Key, LifeTTL) ->
+    receive
+        {update_ttl, NewTTL} -> reap_after(Name, Key, NewTTL)
+    after LifeTTL -> ets:delete(Name, Key)
+    end.
+
+update_ttl_reaper(Reaper, NewTTL) -> Reaper ! {update_ttl, NewTTL}.
+
+kill_ttl_reaper(Reaper) -> is_pid(Reaper) andalso exit(Reaper, kill).
+
+kill_ttl_reapers(Reapers) -> lists:foreach(fun kill_ttl_reaper/1, Reapers).
+
+%% Size reaper
 
 start_link(Name) -> start_link(Name, 8).
 

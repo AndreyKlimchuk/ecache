@@ -3,3 +3,5 @@
 tags
 /.eunit
 /doc
+.idea
+ecache.iml
